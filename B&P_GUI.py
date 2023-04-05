@@ -1,9 +1,22 @@
+import time
 import tkinter as tk
 from tkinter import ttk
+
+
+
+import Product as pr
 from tkinter import filedialog as fd
 from os import path
 
-
+from PIL import ImageTk, Image
+import os
+'''
+import mysql
+mydb = mysql.connector.connect(user="sergej",password="password123", database="izbraniprodukti", host="localhost", auth_plugin="mysql_native_password")
+cursor = mysql.cursor()
+sql = "SELECT * FROM selected_products"
+rows = cursor.fetchall()
+'''
 
 class App(ttk.Frame):
     def __init__(self, parent):
@@ -20,6 +33,12 @@ class App(ttk.Frame):
         # naredimo wigete
         self.setup_widgets()
 
+        #seznam produktov dodanih s strani uporabnika
+        self.dict_produktov = {}
+        self.id = 0
+        self.product_id=0
+        self.current_sel_id = 1
+
 
     #nastavi vse potrebne elemente grafičnega vmesnika
     def setup_widgets(self):
@@ -29,66 +48,57 @@ class App(ttk.Frame):
         self.option_menu_list = ["Izberi opcijo", "Cisco Catalyst 9200 serija", "Dostopne točke serija 1000"]
         self.option_menu_var = tk.StringVar(value= self.option_menu_list[1])
 
-        # Ustvari okvir za Checkbuttons
-        self.select_product_frame = ttk.LabelFrame(self, text="Izbira stikala", padding=(20, 10))
-        self.select_product_frame.grid(row=0, column=0, padx=(20, 10), pady=(20, 10), sticky="nsew")
 
-        # Menu for the Menubutton
-        self.menu = tk.Menu(self)
-        self.menu.add_command(label="Cisco Cataylist serija 9000")
-        self.menu.add_command(label="Menu item 2")
-        self.menu.add_separator()
-        self.menu.add_command(label="Dostopne točke")
-        self.menu.add_command(label="Menu item 4")
-
-
+        # Ustvari okvir za izbiro specifikacije
         self.check_specifications = ttk.LabelFrame(self, text="Izberi specifikacijo", padding=(20, 10))
         self.check_specifications.grid(row=0, column=1, padx=(20, 10), pady=(20, 10), sticky="nsew")
 
-        # Option button
-        self.menubutton = ttk.OptionMenu(self.select_product_frame, self.option_menu_var, *self.option_menu_list, command=lambda m="da" : self.display_selected(m))
-        self.menubutton.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
-
+        # Chech Buttoni za izbiro specifikacije
         self.check_1 = ttk.Checkbutton(self.check_specifications, variable=self.dodaten_napajalnik, text = "Dodaten napajalnik")
         self.check_2 = ttk.Checkbutton(self.check_specifications, variable=self.eu_power_cable, text="EU napajalni kabel")
         self.check_3 = ttk.Checkbutton(self.check_specifications, variable=self.stack_cable, text="Stack kabli")
 
+        #Dodajanje v grid za izbiro specifikacije
         self.check_1.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
         self.check_2.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
         self.check_3.grid(row=2, column=0, padx=5, pady=10, sticky="nsew")
 
-        # Panedwindow
-        self.paned = ttk.PanedWindow(self)
-        self.paned.grid(row=0, column=2, pady=(25, 5), sticky="nsew", rowspan=3)
+        #gumb izbriši
+        self.delete_button = ttk.Button(self.check_specifications, text="Izbriši", command=self.delete_product)
+        self.delete_button.grid(row=3, column=0, padx=5, pady=10)
+
+        # Panedwindow - za izbiro stikal
+        paned = ttk.PanedWindow(self)
+        paned.grid(row=0, column=2, pady=(25, 5), sticky="nsew", rowspan=3)
 
         # Pane #1
-        self.pane_1 = ttk.Frame(self.paned, padding=5)
-        self.paned.add(self.pane_1, weight=1)
+        pane_1 = ttk.Frame(paned, padding=5)
+        paned.add(pane_1, weight=1)
 
         # Scrollbar
-        self.scrollbar = ttk.Scrollbar(self.pane_1)
-        self.scrollbar.pack(side="right", fill="y")
+        scrollbar = ttk.Scrollbar(pane_1)
+        scrollbar.pack(side="right", fill="y")
 
         # Treeview
-        self.treeview = ttk.Treeview(
-            self.pane_1,
+        self.treeview_data = ttk.Treeview(
+            pane_1,
             selectmode="browse",
-            yscrollcommand=self.scrollbar.set,
+            yscrollcommand=scrollbar.set,
             columns=(1, 2),
             height=10,
         )
-        self.treeview.pack(expand=True, fill="both")
-        self.scrollbar.config(command=self.treeview.yview)
+        self.treeview_data.pack(expand=True, fill="both")
+        scrollbar.config(command=self.treeview_data.yview)
 
         # Treeview columns
-        self.treeview.column("#0", anchor="w", width=120)
-        self.treeview.column(1, anchor="w", width=120)
-        self.treeview.column(2, anchor="w", width=120)
+        self.treeview_data.column("#0", anchor="w", width=120)
+        self.treeview_data.column(1, anchor="w", width=120)
+        self.treeview_data.column(2, anchor="w", width=120)
 
         # Treeview headings
-        self.treeview.heading("#0", text="Column 1", anchor="center")
-        self.treeview.heading(1, text="Column 2", anchor="center")
-        self.treeview.heading(2, text="Column 3", anchor="center")
+        self.treeview_data.heading("#0", text="Naprava", anchor="center")
+        self.treeview_data.heading(1, text="Column 2", anchor="center")
+        self.treeview_data.heading(2, text="Column 3", anchor="center")
 
         # Define treeview data
         treeview_data = [
@@ -116,34 +126,118 @@ class App(ttk.Frame):
 
         # Insert treeview data
         for item in treeview_data:
-            self.treeview.insert(
-                parent=item[0], index="end", iid=item[1], text=item[2], values=item[3]
-            )
+            self.treeview_data.insert(parent=item[0], index="end", iid=item[1], text=item[2], values=item[3])
             if item[0] == "" or item[1] in {8, 21}:
-                self.treeview.item(item[1], open=True)  # Open parents
+                self.treeview_data.item(item[1], open=True)  # Open parents
 
         # Select and scroll
-        self.treeview.selection_set(10)
-        self.treeview.see(7)
-        self.treeview.bind( "<ButtonRelease-1>", self.selectItem) #izbiše takoj, ko kliknemo
+        self.treeview_data.selection_set(10)
+        self.treeview_data.see(7)
+        self.treeview_data.bind( "<ButtonRelease-1>", self.selectItem) #izpiše takoj, ko kliknemo v tabeli s podatki
 
 
+        #Paned za naprave, ki jih je uporavnik izbral
+        #Paned za naprave, ki jih je uporavnik izbral
+        #Paned za naprave, ki jih je uporavnik izbral
+        #Paned za naprave, ki jih je uporavnik izbral
 
-    #Izpiše in vrne izbrano opciji pri "optionmenu"
-    def display_selected(self,m):
-        self.izbrana_serija = self.option_menu_var.get()
-        print(self.izbrana_serija)
+        # Panedwindow - za izbiro stikal
+        paned_selected = ttk.PanedWindow(self)
+        paned_selected.grid(row=0, column=0, pady=(25, 5), sticky="nsew", rowspan=3)
+
+        # Pane #1
+        pane_1_selected = ttk.Frame(paned_selected, padding=5)
+        paned_selected.add(pane_1_selected, weight=1)
+
+        # Scrollbar
+        scrollbar_selected = ttk.Scrollbar(pane_1_selected)
+        scrollbar_selected.pack(side="right", fill="y")
+
+        # Treeview
+        self.treeview_data_selected = ttk.Treeview(
+            pane_1_selected,
+            selectmode="browse",
+            yscrollcommand=scrollbar_selected.set,
+            columns=(1, 2),
+            height=10,
+        )
+        self.treeview_data_selected.pack(expand=True, fill="both")
+        scrollbar_selected.config(command=self.treeview_data_selected.yview)
+
+        # Treeview columns
+        self.treeview_data_selected.column("#0", anchor="w", width=120)
+        self.treeview_data_selected.column(1, anchor="w", width=120)
+        self.treeview_data_selected.column(2, anchor="w", width=120)
+
+        # Treeview headings
+        self.treeview_data_selected.heading("#0", text="Izbrane naprave", anchor="center")
+        self.treeview_data_selected.heading(1, text="Stolpec 2", anchor="center")
+        self.treeview_data_selected.heading(2, text="Stolpec 3", anchor="center")
+
+        # Select and scroll
+        self.treeview_data_selected.bind("<ButtonRelease-1>", self.selected_item_on_selection)  # izpiše takoj, ko kliknemo. to je za že izbrane
 
 
+    #dobim element iz Treeview-a podatkov, katerega smo kliknili
     def selectItem(self, a):
-        curItem = self.treeview.focus()
-        self.izbran_produkt = self.treeview.item(curItem)["text"]#dobim slovar
-        print(self.izbran_produkt)
-        self.add_selected_product(self.izbran_produkt)
+        curItem = self.treeview_data.focus()
+        izbran_produkt = self.treeview_data.item(curItem)["text"]#dobim slovar
+        print(izbran_produkt)
+        self.product_id+=1
 
-    def add_selected_product(self, izbran_produkt):
-        self.check_1 = ttk.Checkbutton(self.check_specifications, variable=self.dodaten_napajalnik, text="Dodaten napajalnik")
-        self.check_1.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        new_sel_product = pr.Product(izbran_produkt,self.product_id)
+        self.dict_produktov[self.product_id] = new_sel_product
+        self.update_selected_table()
+
+    #Vedno na novo izpiše tabelo izbranih produktov iz sez_produktov()
+    def update_selected_table(self):
+        self.treeview_data_selected.delete(*self.treeview_data_selected.get_children()) #zbrisemo celotni treeview
+        for key in self.dict_produktov:
+            product = self.dict_produktov[key]
+            terka = ("EU napajalni kabel", "Dodaten napajalnik", "asd")
+            self.treeview_data_selected.insert(parent="", index="end", iid=product.id, text=product.ime_produkta, values=terka)
+
+    #Tabela od že izbranih produktov. Se kliče ko kliknemo na izbrano vrstico
+    def selected_item_on_selection(self,event): #getrow()
+        rowid = self.treeview_data_selected.identify_row(event.y)
+        print(rowid)
+        self.update_specs()
+
+        try:
+            self.current_sel_id = int(rowid)
+            self.show_specs(int(rowid))
+        except ValueError as e:
+            print()
+        except KeyError as e:
+            print()
+        except Exception as e:
+            print()
+
+
+
+    #takoj ko kliknemo na produkt, se prikažejo lastnosti produkta na chechboxih
+    def show_specs(self, rowid):
+        product = self.dict_produktov[self.current_sel_id]
+        self.dodaten_napajalnik.set(product.dodaten_napajalnik)
+        self.eu_power_cable.set(product.eu_napajalni_kabel)
+        self.stack_cable.set(product.dodatni_stack_kabli)
+
+    #Ko imamo izbrano neko vrstico in pritisnemo gumb "Izbriši" nam izbriše produkt iz Tabele izbranih produktov
+    def delete_product(self):
+        del self.dict_produktov[self.current_sel_id]
+        self.update_selected_table()
+        self.current_sel_id = -1
+
+    def update_specs(self):
+        if self.current_sel_id == -1:
+            print("pass")
+            pass
+        else:
+            product = self.dict_produktov[self.current_sel_id]
+            product.dodaten_napajalnik = self.dodaten_napajalnik.get()
+            product.eu_napajalni_kabel = self.eu_power_cable.get()
+            product.dodatni_stack_kabli = self.stack_cable.get()
+
 
 
 
@@ -166,3 +260,7 @@ if __name__ == "__main__":
     root.geometry("+{}+{}".format(x_cordinate, y_cordinate-20))
 
     root.mainloop()
+
+
+    #https://www.youtube.com/watch?v=67hNu3A4tts - nastavljanje checkbox-ov
+    #https://www.youtube.com/watch?v=i4qLI9lmkqw&t=0s - add, edit, remove čas 27:00
