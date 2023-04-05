@@ -1,8 +1,6 @@
 import time
 import tkinter as tk
-from tkinter import ttk
-
-
+from tkinter import ttk, messagebox
 
 import Product as pr
 from tkinter import filedialog as fd
@@ -37,7 +35,7 @@ class App(ttk.Frame):
         self.dict_produktov = {}
         self.id = 0
         self.product_id=0
-        self.current_sel_id = 1
+        self.current_sel_id = None
 
 
     #nastavi vse potrebne elemente grafičnega vmesnika
@@ -64,7 +62,7 @@ class App(ttk.Frame):
         self.check_3.grid(row=2, column=0, padx=5, pady=10, sticky="nsew")
 
         #gumb izbriši
-        self.delete_button = ttk.Button(self.check_specifications, text="Izbriši", command=self.delete_product)
+        self.delete_button = ttk.Button(self.check_specifications, text="Izbriši izbran produkt", command=self.delete_product)
         self.delete_button.grid(row=3, column=0, padx=5, pady=10)
 
         # Panedwindow - za izbiro stikal
@@ -201,11 +199,10 @@ class App(ttk.Frame):
     def selected_item_on_selection(self,event): #getrow()
         rowid = self.treeview_data_selected.identify_row(event.y)
         print(rowid)
-        self.update_specs()
-
+        self.update_specs() #update kličemo preden se se prikaže novi kliknjen produkt. Zato, da vemo kateri produkt poubdejtat, preden se zamenja
         try:
             self.current_sel_id = int(rowid)
-            self.show_specs(int(rowid))
+            self.show_specs()
         except ValueError as e:
             print()
         except KeyError as e:
@@ -213,10 +210,8 @@ class App(ttk.Frame):
         except Exception as e:
             print()
 
-
-
     #takoj ko kliknemo na produkt, se prikažejo lastnosti produkta na chechboxih
-    def show_specs(self, rowid):
+    def show_specs(self):
         product = self.dict_produktov[self.current_sel_id]
         self.dodaten_napajalnik.set(product.dodaten_napajalnik)
         self.eu_power_cable.set(product.eu_napajalni_kabel)
@@ -224,15 +219,15 @@ class App(ttk.Frame):
 
     #Ko imamo izbrano neko vrstico in pritisnemo gumb "Izbriši" nam izbriše produkt iz Tabele izbranih produktov
     def delete_product(self):
-        del self.dict_produktov[self.current_sel_id]
-        self.update_selected_table()
-        self.current_sel_id = -1
+        if self.current_sel_id  in self.dict_produktov:
+            ime = self.dict_produktov[self.current_sel_id].ime_produkta
+            if messagebox.askyesno("Potrdi izbris izbranega produkta", 'Ali si prepričan, da želiš izbrisati izbrani prodkut {}?'.format(ime)):
+                del self.dict_produktov[self.current_sel_id]
+                self.update_selected_table()
+                self.current_sel_id = None #ko pobrišemo izbrano vrstico, potem trenutno nimamo več izbrane vrstice
 
     def update_specs(self):
-        if self.current_sel_id == -1:
-            print("pass")
-            pass
-        else:
+        if self.current_sel_id != None:
             product = self.dict_produktov[self.current_sel_id]
             product.dodaten_napajalnik = self.dodaten_napajalnik.get()
             product.eu_napajalni_kabel = self.eu_power_cable.get()
