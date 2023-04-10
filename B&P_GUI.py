@@ -6,15 +6,6 @@ import Product as pr
 from tkinter import filedialog as fd
 from os import path
 
-from PIL import ImageTk, Image
-import os
-'''
-import mysql
-mydb = mysql.connector.connect(user="sergej",password="password123", database="izbraniprodukti", host="localhost", auth_plugin="mysql_native_password")
-cursor = mysql.cursor()
-sql = "SELECT * FROM selected_products"
-rows = cursor.fetchall()
-'''
 
 class App(ttk.Frame):
     def __init__(self, parent):
