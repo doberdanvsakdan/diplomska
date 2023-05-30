@@ -100,8 +100,6 @@ class BuildandpriceBot:
             self.element_click(By.LINK_TEXT, 'Console Cable') #mormo kliknit stran, da se shranita dva kabla
             time.sleep(0.6)
 
-
-
         #Done button
         self.element_click(By.XPATH,'//*[@id="tobe-capture"]/div[3]/div/div[14]/div[3]/div[2]/div[2]/div[3]/input[2]') #Todo: za vse te gumbe ne bom smeu uporabljat xpath, ker ne dela za vse produkte
 
@@ -111,8 +109,6 @@ class BuildandpriceBot:
         if self.try_element_click(btn) == False:
             print("elementa nismo mogli klikniti")
         time.sleep(1)
-
-
 
     def select_estimate(self, estimate_name):
         pass
