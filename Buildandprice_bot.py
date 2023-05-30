@@ -88,7 +88,6 @@ class BuildandpriceBot:
         self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[1]/table/tbody/tr/td[1]/label')
         time.sleep(0.5)
 
-
         if product.dodaten_napajalnik: #ča imamo dodaten napajalnik potrebujemo dva kabla
             self.element_click(By.LINK_TEXT, 'Power Cables')
 
