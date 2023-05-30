@@ -3,6 +3,8 @@ from selenium.common import ElementNotInteractableException, NoSuchElementExcept
     StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
 
@@ -25,7 +27,7 @@ class BuildandpriceBot:
 
         prod1 = Product("C9200L-24P-4G-E", 1)
         prod2 = Product("C9200L-48P-4X-E", 2)
-        prod3 = Product("C9300-24T-E", 3)
+        prod3 = Product("C9300-24T-E", 3) #TODO: ne dela
         prod4 = Product("C1000-24P-4G-L", 3)
 
         self.sez_products = [prod1,prod2,prod3,prod4]
@@ -35,15 +37,14 @@ class BuildandpriceBot:
         email = self.browser.find_element(By.XPATH,'//*[@id="userInput"]')
         email.send_keys(usernameStr)
 
-        nxt_btn = self.interact_with_element("login-button")
-        nxt_btn.click()
+
+        self.element_click(By.ID, 'login-button')
 
         password = self.interact_with_element("okta-signin-password")
         self.send_key(password, passwordStr)
 
-        nxt_btn = self.interact_with_element("okta-signin-submit")
-        self.element_click(nxt_btn)
-        #nxt_btn.click()
+        self.element_click(By.ID, "okta-signin-submit")
+
 
     def choose_estimate(self, create_new_estinate, estimate_name):
         if create_new_estinate:
@@ -52,9 +53,7 @@ class BuildandpriceBot:
             self.select_estimate(estimate_name)
 
     def create_new_estimate(self):
-        time.sleep(4)
-        create_new_btn = self.browser.find_elements(By.CLASS_NAME, 'createNewSubscription')
-        create_new_btn[0].click()
+        self.element_click(By.CLASS_NAME, 'createNewSubscription')
         #Tuki smo zdej v novem oknu, kjer kreriramo estimate
 
 
@@ -62,66 +61,57 @@ class BuildandpriceBot:
         for st, product in enumerate(self.sez_products):
             self.add_product(product, st)
 
-        time.sleep(100)
 
     def add_product(self, product, st):
 
         search_field = self.browser.find_element(By.ID, 'searchProd')
         search_field.send_keys(product.ime_produkta)
+        self.element_click(By.ID, "ui-id-1")
+        self.element_click(By.ID, 'addProduct')
 
-        element = self.interact_with_element("ui-id-1")
-        self.element_click(element)
-        add_btn = self.browser.find_element(By.ID, 'addProduct')
-        add_btn.click()
-        time.sleep(2)
-        edit = self.browser.find_elements(By.CLASS_NAME, 'settingIcon')
-        sez = []
-
-        for el in edit:
-            text = el.get_attribute("original-title")
-            if text == "Edit Options":
-                sez.append(el.get_attribute("id"))
-        edit_btn = self.browser.find_element(By.ID, sez[st])
-        edit_btn.click()
+        self.element_click(By.LINK_TEXT, 'Edit Options')
         self.edit_prod_spec(product)
-        time.sleep(3)
 
 
+    #uredimo specifikacije produkta
     def edit_prod_spec(self, product):
-        time.sleep(0.5)
         config_sez = ["Stack Module", "Secondary Power Supply", "Power Cables", "Console Cable", "Network PNP License"]
 
         #Dodaten napajalnik
         if product.dodaten_napajalnik:
-            edit_btn = self.get_web_element(By.XPATH,'//*[@id="ullicontForNewCore"]/div/div/div/h6[3]/div/a')
-            edit_btn.click()
-            radio = self.get_web_element(By.XPATH, '/html/body/div[3]/div/div[16]/div[3]/div/div[17]/form/div[4]/table/tbody/tr/td[1]/label')
-            self.element_click(radio)
-            time.sleep(0.6)
+            self.element_click(By.LINK_TEXT,'Secondary Power Supply')
+            self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[4]/table/tbody/tr/td[1]/label')
+            time.sleep(0.5)
+
+
         #Power cables
-        edit_btn = self.get_web_element(By.XPATH,'//*[@id="ullicontForNewCore"]/div/div/div/h6[4]/div/a')
-        self.element_click(edit_btn)
-        radio = self.get_web_element(By.XPATH, '/html/body/div[3]/div/div[16]/div[3]/div/div[17]/form/div[1]/table/tbody/tr/td[1]/label')
-        self.element_click(radio)
+        self.element_click(By.XPATH,'//*[@id="ullicontForNewCore"]/div/div/div/h6[4]/div/a')
+        self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[1]/table/tbody/tr/td[1]/label')
         time.sleep(0.5)
-        if product.dodaten_napajalnik:
-            edit_btn = self.get_web_element(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[1]/table/tbody/tr/td[3]/input')
-            self.element_click(edit_btn)
-            time.sleep(0.4)
-            edit_btn.send_keys("2")
+
+
+        if product.dodaten_napajalnik: #ča imamo dodaten napajalnik potrebujemo dva kabla
+            self.element_click(By.LINK_TEXT, 'Power Cables')
+
+            qnt_inp = self.get_web_element(By.NAME, 'CAB-TA-EU')
+            self.try_element_click(qnt_inp) #kliknemo, da pobriše prednastavljeno število 1
+            qnt_inp.send_keys("2")
+            time.sleep(0.6)
+            self.element_click(By.LINK_TEXT, 'Console Cable') #mormo kliknit stran, da se shranita dva kabla
+            time.sleep(0.6)
+
+
 
         #Done button
-        edit_btn = self.get_web_element(By.XPATH,'//*[@id="sticky"]/div/div[2]/div[2]/div[3]/input[2]')
-        self.element_click(edit_btn)
-        time.sleep(2)
-        edit_btn = self.get_web_element(By.XPATH, '//*[@id="sticky"]/div/div[2]/div[2]/div[3]/input[2]')
-        self.element_click(edit_btn)
-        time.sleep(0.8)
+        self.element_click(By.XPATH,'//*[@id="tobe-capture"]/div[3]/div/div[14]/div[3]/div[2]/div[2]/div[3]/input[2]') #Todo: za vse te gumbe ne bom smeu uporabljat xpath, ker ne dela za vse produkte
 
-        #Confrm button
-        edit_btn = self.get_web_element(By.XPATH, '//*[@id="doneModalBucket"]/div/form/div[6]/span/input')
-        self.element_click(edit_btn)
-        time.sleep(2)
+        #Comfrm button
+        btn = self.get_web_element(By.NAME, 'exitAddrAction')
+        #self.element_click(By.XPATH, '//*[@id="doneModalBucket"]/div/form/div[5]/span/input')
+        if self.try_element_click(btn) == False:
+            print("elementa nismo mogli klikniti")
+        time.sleep(1)
+
 
 
     def select_estimate(self, estimate_name):
@@ -143,24 +133,33 @@ class BuildandpriceBot:
 
     def get_web_element(self, By, identificator):
         element = None
-        st = 0
-        while (True):
-            if st == 10: #2s
-                break
-            st+=1
-            try:
-                element = self.browser.find_element(By, identificator)
-                break
-            except ElementNotInteractableException as e:
-                time.sleep(0.2)
-            except NoSuchElementException as e:
-                time.sleep(0.2)
-        if element == None:
-            print('Couldnt get element: {} by {}.'.format(identificator, By))
+        try:
+            element = WebDriverWait(self.browser, 8).until(
+                EC.presence_of_element_located((By, identificator))
+            )
+        #except Exception as e:
+         #   print(e)
+        except:
+            self.browser.quit()
+
         return element
 
+
+
     #TODO: združi funkcijo "interact_with_element" in funkcijo "element_click". Naj dobi še en vhod, ki določi kaj se naredi s elementom
-    def element_click(self, objct_to_click):
+    def element_click(self, By, identificator):
+        #try:
+        wait = WebDriverWait(self.browser, 10)
+        wait.until(EC.element_to_be_clickable((By, identificator))).click()
+        #except Exception as e:
+         #   print(e)
+        #except:
+         #   self.browser.quit()
+
+        return True
+
+    #stara funkcija za klikanje objektov
+    def try_element_click(self, objct_to_click):
         if objct_to_click == None:
             print("Object to click is None Type")
             return False
@@ -180,6 +179,8 @@ class BuildandpriceBot:
                 time.sleep(0.2)
             except StaleElementReferenceException as e:
                 time.sleep(0.2)
+        return False
+
 
 
     def send_key(self, element, string):
@@ -202,8 +203,6 @@ def main ():
     bot = BuildandpriceBot()
     bot.login()
     bot.choose_estimate(create_new_estinate, estimate_name)
-
-    time.sleep(3)
 
 
 if __name__ == '__main__':
