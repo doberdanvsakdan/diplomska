@@ -83,7 +83,6 @@ class BuildandpriceBot:
             self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[4]/table/tbody/tr/td[1]/label')
             time.sleep(0.5)
 
-
         #Power cables
         self.element_click(By.XPATH,'//*[@id="ullicontForNewCore"]/div/div/div/h6[4]/div/a')
         self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[1]/table/tbody/tr/td[1]/label')
