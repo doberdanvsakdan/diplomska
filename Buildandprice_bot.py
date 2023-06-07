@@ -1,12 +1,19 @@
+
 from selenium import webdriver
 from selenium.common import ElementNotInteractableException, NoSuchElementException, ElementClickInterceptedException, \
-    StaleElementReferenceException
+    StaleElementReferenceException, TimeoutException, ElementNotVisibleException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
+
 
 from Product import Product
 
@@ -15,11 +22,20 @@ passwordStr = 'tporeco2014HD'
 
 class BuildandpriceBot:
     def __init__(self):
-        chrome_options = Options()
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-extensions')
+        #self.browser = webdriver.Firefox(executable_path='geckodriver.exe')
+
+        self.browser = webdriver.Firefox(service=Service(GeckoDriverManager().install()))
+        #chrome_options = Options()
+        #chrome_options.add_argument('--no-sandbox')
+        #chrome_options.add_argument('--disable-extensions')
+        # chrome_options.add_argument('--headless')
+        #self.browser = webdriver.Chrome(executable_path='chromedriver.exe', options=chrome_options)
+
+        #chrome_options = Options()
+        #chrome_options.add_argument('--no-sandbox')
+        #chrome_options.add_argument('--disable-extensions')
         #chrome_options.add_argument('--headless')
-        self.browser = webdriver.Chrome(executable_path='chromedriver.exe', options=chrome_options)
+        #self.browser = webdriver.Chrome(executable_path='chromedriver.exe', options=chrome_options)
         #self.browser.set_window_position(0, 0)
 
         #self.browser.set_window_size(1920, 1080)
@@ -33,17 +49,16 @@ class BuildandpriceBot:
         self.sez_products = [prod1,prod2,prod3,prod4]
 
     def login(self):
-        #email = self.interact_with_element("userInput")
-        email = self.browser.find_element(By.XPATH,'//*[@id="userInput"]')
+        email = self.get_web_element(By.ID,'userInput')
         email.send_keys(usernameStr)
-
-
         self.element_click(By.ID, 'login-button')
 
         password = self.interact_with_element("okta-signin-password")
         self.send_key(password, passwordStr)
 
-        self.element_click(By.ID, "okta-signin-submit")
+        log_in_btn = self.get_web_element(By.ID, "okta-signin-submit")
+        self.try_element_click(log_in_btn)
+        #self.element_click(By.ID, "okta-signin-submit")
 
 
     def choose_estimate(self, create_new_estinate, estimate_name):
@@ -63,28 +78,30 @@ class BuildandpriceBot:
 
 
     def add_product(self, product, st):
-
-        search_field = self.browser.find_element(By.ID, 'searchProd')
+        search_field = self.get_web_element(By.ID, 'searchProd')
         search_field.send_keys(product.ime_produkta)
         self.element_click(By.ID, "ui-id-1")
+        time.sleep(0.2)
         self.element_click(By.ID, 'addProduct')
+        time.sleep(0.5)
 
-        self.element_click(By.LINK_TEXT, 'Edit Options')
-        self.edit_prod_spec(product)
+        if self.element_click(By.LINK_TEXT, 'Edit Options'):
+            self.edit_prod_spec(product)
 
 
     #uredimo specifikacije produkta
     def edit_prod_spec(self, product):
         config_sez = ["Stack Module", "Secondary Power Supply", "Power Cables", "Console Cable", "Network PNP License"]
+        time.sleep(1)
 
         #Dodaten napajalnik
         if product.dodaten_napajalnik:
             self.element_click(By.LINK_TEXT,'Secondary Power Supply')
-            self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[4]/table/tbody/tr/td[1]/label')
+            self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[4]/table/tbody/tr/td[1]/label') #radio button
             time.sleep(0.5)
 
         #Power cables
-        self.element_click(By.XPATH,'//*[@id="ullicontForNewCore"]/div/div/div/h6[4]/div/a')
+        self.element_click(By.LINK_TEXT,'Power Cables')
         self.element_click(By.XPATH, '//*[@id="icwConfigOptions"]/form/div[1]/table/tbody/tr/td[1]/label')
         time.sleep(0.5)
 
@@ -96,13 +113,15 @@ class BuildandpriceBot:
             qnt_inp.send_keys("2")
             time.sleep(0.6)
             self.element_click(By.LINK_TEXT, 'Console Cable') #mormo kliknit stran, da se shranita dva kabla
-            time.sleep(0.6)
+            time.sleep(1)
 
         #Done button
-        self.element_click(By.XPATH,'//*[@id="tobe-capture"]/div[3]/div/div[14]/div[3]/div[2]/div[2]/div[3]/input[2]') #Todo: za vse te gumbe ne bom smeu uporabljat xpath, ker ne dela za vse produkte
+        self.element_click(By.LINK_TEXT,'Done') #Todo: za vse te gumbe ne bom smeu uporabljat xpath, ker ne dela za vse produkte
+        buttons = self.browser.find_elements(By.XPATH, './/form//input[@type="button"]')
+
 
         #Comfrm button
-        btn = self.get_web_element(By.NAME, 'exitAddrAction')
+        btn = self.get_web_element(By.LINK_TEXT,'Done')
         #self.element_click(By.XPATH, '//*[@id="doneModalBucket"]/div/form/div[5]/span/input')
         if self.try_element_click(btn) == False:
             print("elementa nismo mogli klikniti")
@@ -142,20 +161,41 @@ class BuildandpriceBot:
 
     #TODO: združi funkcijo "interact_with_element" in funkcijo "element_click". Naj dobi še en vhod, ki določi kaj se naredi s elementom
     def element_click(self, By, identificator):
-        #try:
-        wait = WebDriverWait(self.browser, 10)
-        wait.until(EC.element_to_be_clickable((By, identificator))).click()
-        #except Exception as e:
-         #   print(e)
-        #except:
-         #   self.browser.quit()
+        try:
+
+            #WebDriverWait(self.browser, 15).until(EC.element_to_be_clickable((By, identificator))).click()
+            terka_exeptionov = [ElementClickInterceptedException]
+            element = WebDriverWait(self.browser, 10, 0.5, terka_exeptionov).until(EC.presence_of_element_located((By, identificator)))
+            if element:
+                element_to_click = WebDriverWait(self.browser, 10, 0.2,).until(EC.element_to_be_clickable((By, identificator)))
+                if element_to_click:
+                    element_to_click.click()
+                else:
+                    print("Cannot click element.")
+
+        except TimeoutException as e:
+            print(f'Timeout Exeption: at element "{identificator}" by locator "{By}". Cannot locate element.')
+            print(e)
+            obj = self.get_web_element(By, identificator)
+            self.try_element_click(obj)
+            #self.browser.quit()
+            return False
+
+        except ElementClickInterceptedException as e:
+            print(f'ElementClick Intercepted Exception: at element "{identificator}" by locator "{By}". Cannot locate element.')
+            print(e)
+            obj = self.get_web_element(By, identificator)
+            self.try_element_click(obj)
+            # self.browser.quit()
+            return False
+
 
         return True
 
     #stara funkcija za klikanje objektov
     def try_element_click(self, objct_to_click):
         if objct_to_click == None:
-            print("Object to click is None Type")
+            print("Object to click is None Type. Cannot locate element.")
             return False
         st = 0
         while (True):
@@ -186,8 +226,6 @@ class BuildandpriceBot:
                 time.sleep(0.2)
             except NoSuchElementException as e:
                 time.sleep(0.2)
-
-
 
 
 def main ():
