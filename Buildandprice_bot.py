@@ -49,10 +49,8 @@ class BuildandpriceBot:
         self.sez_products = [prod1,prod2,prod3,prod4]
 
     def login(self):
-        #email = self.get_web_element(By.ID,'userInput')
-        #email.send_keys(usernameStr)
-        self.send_keys(By.ID,'userInput', usernameStr)
-
+        email = self.get_web_element(By.ID,'userInput')
+        email.send_keys(usernameStr)
         self.element_click(By.ID, 'login-button')
 
         password = self.interact_with_element("okta-signin-password")
@@ -82,7 +80,10 @@ class BuildandpriceBot:
     def add_product(self, product, st):
         search_field = self.get_web_element(By.ID, 'searchProd')
         search_field.send_keys(product.ime_produkta)
+        self.element_click(By.ID, "ui-id-1")
+        time.sleep(0.2)
         self.element_click(By.ID, 'addProduct')
+        time.sleep(0.5)
 
         if self.element_click(By.LINK_TEXT, 'Edit Options'):
             self.edit_prod_spec(product)
@@ -109,31 +110,21 @@ class BuildandpriceBot:
 
             qnt_inp = self.get_web_element(By.NAME, 'CAB-TA-EU')
             self.try_element_click(qnt_inp) #kliknemo, da pobriše prednastavljeno število 1
-            self.element_click(By.NAME, 'CAB-TA-EU')
             qnt_inp.send_keys("2")
             time.sleep(0.6)
-            self.element_click(By.LINK_TEXT, 'Secondary Power Supply') #mormo kliknit stran, da se shranita dva kabla
+            self.element_click(By.LINK_TEXT, 'Console Cable') #mormo kliknit stran, da se shranita dva kabla
             time.sleep(1)
 
         #Done button
-        #self.element_click(By.XPATH,'//*[@id="tobe-capture"]/div[3]/div/div[14]/div[3]/div[2]/div[2]/div[3]/input[2]')
-        buttons = self.browser.find_elements(By.CLASS_NAME, 'tooltipSe')
-        for button in buttons:
-            if button.accessible_name == "Done":
-                self.browser.execute_script("arguments[0].click();", button)
-                break
+        self.element_click(By.LINK_TEXT,'Done') #Todo: za vse te gumbe ne bom smeu uporabljat xpath, ker ne dela za vse produkte
+        buttons = self.browser.find_elements(By.XPATH, './/form//input[@type="button"]')
 
 
         #Comfrm button
-        time.sleep(1)
-        buttons = self.browser.find_elements(By.CLASS_NAME, 'icwFinalButtonDone')
-        for button in buttons:
-            if button.accessible_name == "Done":
-                self.browser.execute_script("arguments[0].click();", button)
-                break
+        btn = self.get_web_element(By.LINK_TEXT,'Done')
         #self.element_click(By.XPATH, '//*[@id="doneModalBucket"]/div/form/div[5]/span/input')
-        #if self.try_element_click(btn) == False:
-         #   print("elementa nismo mogli klikniti")
+        if self.try_element_click(btn) == False:
+            print("elementa nismo mogli klikniti")
         time.sleep(1)
 
     def select_estimate(self, estimate_name):
@@ -156,38 +147,27 @@ class BuildandpriceBot:
     def get_web_element(self, By, identificator):
         element = None
         try:
-            terka_exeptionov = [ElementClickInterceptedException, ElementNotInteractableException,
-                                StaleElementReferenceException]
-            element = WebDriverWait(self.browser, 10, 0.5, terka_exeptionov).until(
-                EC.presence_of_element_located((By, identificator)))
+            element = WebDriverWait(self.browser, 8).until(
+                EC.presence_of_element_located((By, identificator))
+            )
         #except Exception as e:
          #   print(e)
         except:
             self.browser.quit()
 
         return element
-    def send_keys(self, By, identificator, keys):
-        element = None
-        try:
-            terka_exeptionov = [ElementClickInterceptedException, ElementNotInteractableException,
-                                StaleElementReferenceException]
-            element = WebDriverWait(self.browser, 10, 0.5, terka_exeptionov).until(
-                EC.visibility_of_element_located((By, identificator)))
-            if element:
-                element.send_keys(keys)
-        except:
-            self.browser.quit()
 
 
 
     #TODO: združi funkcijo "interact_with_element" in funkcijo "element_click". Naj dobi še en vhod, ki določi kaj se naredi s elementom
     def element_click(self, By, identificator):
-        time.sleep(0.8)
         try:
-            terka_exeptionov = [ElementClickInterceptedException, ElementNotInteractableException, StaleElementReferenceException]
+
+            #WebDriverWait(self.browser, 15).until(EC.element_to_be_clickable((By, identificator))).click()
+            terka_exeptionov = [ElementClickInterceptedException]
             element = WebDriverWait(self.browser, 10, 0.5, terka_exeptionov).until(EC.presence_of_element_located((By, identificator)))
             if element:
-                element_to_click = WebDriverWait(self.browser, 10, 0.2, terka_exeptionov).until(EC.element_to_be_clickable((By, identificator)))
+                element_to_click = WebDriverWait(self.browser, 10, 0.2,).until(EC.element_to_be_clickable((By, identificator)))
                 if element_to_click:
                     element_to_click.click()
                 else:
